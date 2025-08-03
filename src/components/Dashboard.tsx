@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Crush {
   id: string;
-  name: string;
   phone: string;
   priority: number;
 }
@@ -17,7 +16,7 @@ interface Crush {
 const Dashboard = () => {
   const [crushes, setCrushes] = useState<Crush[]>([]);
   const [timeLeft, setTimeLeft] = useState(24 * 60 * 60); // 24 hours in seconds
-  const [newCrush, setNewCrush] = useState({ name: "", phone: "" });
+  const [newCrush, setNewCrush] = useState({ phone: "" });
   const { toast } = useToast();
 
   // Timer countdown
@@ -43,10 +42,10 @@ const Dashboard = () => {
   };
 
   const addCrush = () => {
-    if (!newCrush.name || !newCrush.phone) {
+    if (!newCrush.phone) {
       toast({
         title: "Missing Information",
-        description: "Please enter both name and phone number",
+        description: "Please enter a phone number",
         variant: "destructive"
       });
       return;
@@ -63,17 +62,16 @@ const Dashboard = () => {
 
     const crush: Crush = {
       id: Date.now().toString(),
-      name: newCrush.name,
       phone: newCrush.phone,
       priority: crushes.length + 1
     };
 
     setCrushes(prev => [...prev, crush]);
-    setNewCrush({ name: "", phone: "" });
+    setNewCrush({ phone: "" });
     
     toast({
       title: "Crush Added! 💕",
-      description: `${newCrush.name} has been added to your list`,
+      description: "Phone number has been added to your list",
     });
   };
 
@@ -161,21 +159,6 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="crushName">Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="crushName"
-                    placeholder="Enter their name"
-                    className="pl-10"
-                    value={newCrush.name}
-                    onChange={(e) => setNewCrush(prev => ({ ...prev, name: e.target.value }))}
-                    disabled={timeLeft === 0}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="crushPhone">Phone Number</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -188,6 +171,9 @@ const Dashboard = () => {
                     disabled={timeLeft === 0}
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  🔒 Complete privacy - no names stored, only phone numbers
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -236,7 +222,7 @@ const Dashboard = () => {
                           {crush.priority}
                         </div>
                         <div>
-                          <p className="font-medium">{crush.name}</p>
+                          <p className="font-medium">Crush #{crush.priority}</p>
                           <p className="text-sm text-muted-foreground">{crush.phone}</p>
                         </div>
                       </div>

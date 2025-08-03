@@ -18,10 +18,10 @@ interface MatchesPageProps {
 }
 
 const MatchesPage = ({ onBack }: MatchesPageProps) => {
-  const [matches] = useState<Match[]>([
+  const [allMatches] = useState<Match[]>([
     {
       id: "1",
-      name: "Alex Chen",
+      name: "Your Match",
       phone: "+1 (555) 123-4567",
       mutualPriority: 1,
       matchedAt: new Date(),
@@ -29,13 +29,18 @@ const MatchesPage = ({ onBack }: MatchesPageProps) => {
     },
     {
       id: "2", 
-      name: "Sam Rodriguez",
+      name: "Your Match",
       phone: "+1 (555) 987-6543",
       mutualPriority: 3,
       matchedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
       connectionStatus: 'contacted'
     }
   ]);
+
+  // Show only the highest priority match (lowest number = highest priority)
+  const matches = allMatches.length > 0 ? [allMatches.reduce((prev, current) => 
+    prev.mutualPriority < current.mutualPriority ? prev : current
+  )] : [];
 
   const updateConnectionStatus = (matchId: string, status: Match['connectionStatus']) => {
     // TODO: Update match status in database
@@ -78,9 +83,9 @@ const MatchesPage = ({ onBack }: MatchesPageProps) => {
               <Heart className="w-12 h-12 text-primary animate-heartbeat" />
               <Sparkles className="w-8 h-8 text-accent animate-pulse" />
             </div>
-            <h1 className="text-4xl font-bold mb-2">Your Matches!</h1>
+            <h1 className="text-4xl font-bold mb-2">Your Top Match!</h1>
             <p className="text-muted-foreground">
-              Congratulations! These people also added you to their crush list
+              Your highest priority mutual match has been revealed!
             </p>
           </div>
         </div>
@@ -107,10 +112,10 @@ const MatchesPage = ({ onBack }: MatchesPageProps) => {
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl flex items-center justify-center gap-2">
                   <Users className="w-6 h-6" />
-                  {matches.length} Mutual {matches.length === 1 ? 'Match' : 'Matches'} Found!
+                  Your Top Priority Match Found!
                 </CardTitle>
                 <CardDescription>
-                  These are your mutual crushes based on priority matching
+                  Your highest priority mutual crush - completely anonymous and private
                 </CardDescription>
               </CardHeader>
             </Card>
