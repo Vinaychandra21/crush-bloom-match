@@ -14,13 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      crushes: {
+        Row: {
+          created_at: string
+          id: string
+          phone_number: string
+          priority: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone_number: string
+          priority: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone_number?: string
+          priority?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      matches: {
+        Row: {
+          created_at: string
+          id: string
+          user1_id: string
+          user1_priority: number
+          user2_id: string
+          user2_priority: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user1_id: string
+          user1_priority: number
+          user2_id: string
+          user2_priority: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user1_id?: string
+          user1_priority?: number
+          user2_id?: string
+          user2_priority?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          phone_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      find_matches: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
