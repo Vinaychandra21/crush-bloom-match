@@ -1,16 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MessageCircle, Phone, Sparkles, Users, ArrowLeft } from "lucide-react";
+import { Heart, ArrowLeft, Phone, MessageCircle, CheckCircle, Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Match {
   id: string;
-  name: string;
-  phone: string;
-  mutualPriority: number;
-  matchedAt: Date;
-  connectionStatus: 'new' | 'contacted' | 'connected';
+  user1_id: string;
+  user2_id: string;
+  user1_priority: number;
+  user2_priority: number;
+  created_at: string;
+  user1?: {
+    phone_number: string;
+  };
+  user2?: {
+    phone_number: string;
+  };
 }
 
 interface MatchesPageProps {
@@ -18,50 +26,74 @@ interface MatchesPageProps {
 }
 
 const MatchesPage = ({ onBack }: MatchesPageProps) => {
-  const [allMatches] = useState<Match[]>([
-    {
-      id: "1",
-      name: "Your Match",
-      phone: "+1 (555) 123-4567",
-      mutualPriority: 1,
-      matchedAt: new Date(),
-      connectionStatus: 'new'
-    },
-    {
-      id: "2", 
-      name: "Your Match",
-      phone: "+1 (555) 987-6543",
-      mutualPriority: 3,
-      matchedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      connectionStatus: 'contacted'
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchMatches();
+  }, []);
+
+  const fetchMatches = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      
+      setCurrentUser(user);
+
+      const { data, error } = await supabase
+        .from('matches')
+        .select('*')
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Fetch profiles separately for each match
+      const matchesWithProfiles = await Promise.all(
+        (data || []).map(async (match) => {
+          const [user1Profile, user2Profile] = await Promise.all([
+            supabase.from('profiles').select('phone_number').eq('user_id', match.user1_id).single(),
+            supabase.from('profiles').select('phone_number').eq('user_id', match.user2_id).single()
+          ]);
+          
+          return {
+            ...match,
+            user1: user1Profile.data,
+            user2: user2Profile.data
+          };
+        })
+      );
+      
+      setMatches(matchesWithProfiles);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to load matches",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
-
-  // Show only the highest priority match (lowest number = highest priority)
-  const matches = allMatches.length > 0 ? [allMatches.reduce((prev, current) => 
-    prev.mutualPriority < current.mutualPriority ? prev : current
-  )] : [];
-
-  const updateConnectionStatus = (matchId: string, status: Match['connectionStatus']) => {
-    // TODO: Update match status in database
-    console.log(`Updating match ${matchId} to status: ${status}`);
   };
 
   const getPriorityBadgeColor = (priority: number) => {
     switch (priority) {
-      case 1: return "bg-gradient-to-r from-pink-500 to-rose-500 text-white";
-      case 2: return "bg-gradient-to-r from-purple-500 to-pink-500 text-white";
-      case 3: return "bg-gradient-to-r from-blue-500 to-purple-500 text-white";
-      case 4: return "bg-gradient-to-r from-green-500 to-blue-500 text-white";
-      default: return "bg-gradient-to-r from-gray-500 to-gray-600 text-white";
+      case 1: return "bg-yellow-500 text-yellow-900";
+      case 2: return "bg-gray-400 text-gray-900";
+      case 3: return "bg-orange-600 text-orange-100";
+      case 4: return "bg-muted text-muted-foreground";
+      default: return "bg-secondary text-secondary-foreground";
     }
   };
 
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
     
-    if (diffInHours === 0) return "Just now";
+    if (diffInHours < 1) return "Just now";
     if (diffInHours === 1) return "1 hour ago";
     if (diffInHours < 24) return `${diffInHours} hours ago`;
     
@@ -70,178 +102,146 @@ const MatchesPage = ({ onBack }: MatchesPageProps) => {
     return `${diffInDays} days ago`;
   };
 
-  return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" onClick={onBack} className="p-2">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="text-center flex-1">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Heart className="w-12 h-12 text-primary animate-heartbeat" />
-              <Sparkles className="w-8 h-8 text-accent animate-pulse" />
-            </div>
-            <h1 className="text-4xl font-bold mb-2">Your Top Match!</h1>
-            <p className="text-muted-foreground">
-              Your highest priority mutual match has been revealed!
-            </p>
-          </div>
+  const handleCall = (phoneNumber: string) => {
+    window.open(`tel:${phoneNumber}`, '_blank');
+  };
+
+  const handleMessage = (phoneNumber: string) => {
+    window.open(`sms:${phoneNumber}`, '_blank');
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
         </div>
-
-        {matches.length === 0 ? (
-          // No Matches State
-          <Card className="shadow-soft text-center py-16">
-            <CardContent>
-              <Heart className="w-24 h-24 mx-auto mb-6 text-muted-foreground opacity-50" />
-              <h2 className="text-2xl font-bold mb-4">No Matches Yet</h2>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Don't worry! Matches can appear anytime during the Love Window period. 
-                Your crushes might still be adding their lists!
-              </p>
-              <Button variant="romantic" onClick={onBack}>
-                Back to Dashboard
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Match Summary */}
-            <Card className="mb-8 shadow-romantic animate-pulse-glow">
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl flex items-center justify-center gap-2">
-                  <Users className="w-6 h-6" />
-                  Your Top Priority Match Found!
-                </CardTitle>
-                <CardDescription>
-                  Your highest priority mutual crush - completely anonymous and private
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            {/* Matches List */}
-            <div className="space-y-6">
-              {matches.map((match, index) => (
-                <Card 
-                  key={match.id} 
-                  className="shadow-soft hover:shadow-romantic transition-smooth overflow-hidden"
-                >
-                  <CardHeader className="relative">
-                    <div className="absolute top-4 right-4">
-                      <Badge className={getPriorityBadgeColor(match.mutualPriority)}>
-                        Priority #{match.mutualPriority} Match
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-gradient-love rounded-full flex items-center justify-center">
-                        <Heart className="w-8 h-8 text-white animate-heartbeat" />
-                      </div>
-                      
-                      <div className="flex-1">
-                        <CardTitle className="text-2xl mb-1">{match.name}</CardTitle>
-                        <CardDescription className="text-base">
-                          Matched {formatTimeAgo(match.matchedAt)}
-                        </CardDescription>
-                        
-                        <div className="flex items-center gap-2 mt-2">
-                          <Phone className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-mono">{match.phone}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent>
-                    <div className="bg-muted p-4 rounded-lg mb-4">
-                      <p className="text-sm text-center">
-                        🎉 <strong>Mutual Crush Alert!</strong> You both added each other to your lists. 
-                        This is a {match.mutualPriority === 1 ? 'TOP' : `#${match.mutualPriority}`} priority match!
-                      </p>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Button 
-                        variant="love" 
-                        className="flex-1"
-                        onClick={() => {
-                          window.open(`tel:${match.phone}`, '_blank');
-                          updateConnectionStatus(match.id, 'contacted');
-                        }}
-                      >
-                        <Phone className="w-4 h-4 mr-2" />
-                        Call Now
-                      </Button>
-                      
-                      <Button 
-                        variant="romantic" 
-                        className="flex-1"
-                        onClick={() => {
-                          window.open(`sms:${match.phone}?body=Hey! I just saw we matched on CrushMatch! 💕`, '_blank');
-                          updateConnectionStatus(match.id, 'contacted');
-                        }}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Send Message
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        onClick={() => updateConnectionStatus(match.id, 'connected')}
-                      >
-                        Mark as Connected
-                      </Button>
-                    </div>
-                    
-                    {match.connectionStatus === 'contacted' && (
-                      <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-sm text-center">
-                        ✅ You've reached out to this match!
-                      </div>
-                    )}
-                    
-                    {match.connectionStatus === 'connected' && (
-                      <div className="mt-3 p-2 bg-pink-50 border border-pink-200 rounded text-pink-700 text-sm text-center">
-                        💕 You're connected with this match!
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Tips Section */}
-            <Card className="mt-8 shadow-soft">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  Tips for Your First Connection
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <h4 className="font-semibold mb-2">📱 Making Contact</h4>
-                    <ul className="space-y-1 text-muted-foreground">
-                      <li>• Be genuine and mention CrushMatch</li>
-                      <li>• Start with a simple "Hey! We matched!"</li>
-                      <li>• Suggest meeting for coffee or a casual activity</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">💕 Building Connection</h4>
-                    <ul className="space-y-1 text-muted-foreground">
-                      <li>• Be yourself and stay relaxed</li>
-                      <li>• Ask about their interests and hobbies</li>
-                      <li>• Take it slow and enjoy getting to know them</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
       </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <Button variant="ghost" onClick={onBack} className="p-2">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Your Matches
+          </h1>
+          <p className="text-muted-foreground">
+            People who added you back! 💕
+          </p>
+        </div>
+      </div>
+
+      {matches.length === 0 ? (
+        <Card className="shadow-soft">
+          <CardContent className="text-center py-16">
+            <Heart className="w-20 h-20 mx-auto mb-6 text-muted-foreground/50" />
+            <h3 className="text-2xl font-semibold mb-4">No Matches Yet</h3>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+              Don't worry! Matches are processed regularly. Keep adding people you're interested in and check back soon.
+            </p>
+            
+            <div className="grid md:grid-cols-3 gap-6 mt-8">
+              <div className="text-center">
+                <Sparkles className="w-8 h-8 mx-auto mb-2 text-primary" />
+                <h4 className="font-semibold mb-1">Be Patient</h4>
+                <p className="text-sm text-muted-foreground">
+                  Good things take time. Your perfect match might be just around the corner.
+                </p>
+              </div>
+              <div className="text-center">
+                <Heart className="w-8 h-8 mx-auto mb-2 text-primary" />
+                <h4 className="font-semibold mb-1">Stay Active</h4>
+                <p className="text-sm text-muted-foreground">
+                  The more people you add, the higher your chances of finding a match.
+                </p>
+              </div>
+              <div className="text-center">
+                <CheckCircle className="w-8 h-8 mx-auto mb-2 text-primary" />
+                <h4 className="font-semibold mb-1">Trust the Process</h4>
+                <p className="text-sm text-muted-foreground">
+                  Our algorithm works in the background to find mutual connections.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {matches.map((match) => {
+            const isUser1 = match.user1_id === currentUser?.id;
+            const otherUserProfile = isUser1 ? match.user2 : match.user1;
+            const yourPriority = isUser1 ? match.user1_priority : match.user2_priority;
+            const theirPriority = isUser1 ? match.user2_priority : match.user1_priority;
+            
+            return (
+              <Card key={match.id} className="shadow-romantic hover:shadow-glow transition-all duration-300">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Heart className="w-6 h-6 text-primary animate-heartbeat" />
+                      New Match!
+                    </CardTitle>
+                    <Badge variant="secondary">
+                      {formatTimeAgo(match.created_at)}
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    You both added each other to your crush lists 💕
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent className="space-y-6">
+                  <div className="text-center p-6 bg-gradient-soft rounded-lg">
+                    <div className="text-6xl mb-4">💕</div>
+                    <h3 className="text-xl font-semibold mb-2">
+                      {otherUserProfile?.phone_number || 'Unknown'}
+                    </h3>
+                    <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        Your Priority: 
+                        <Badge className={getPriorityBadgeColor(yourPriority)}>
+                          #{yourPriority}
+                        </Badge>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        Their Priority: 
+                        <Badge className={getPriorityBadgeColor(theirPriority)}>
+                          #{theirPriority}
+                        </Badge>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button 
+                      onClick={() => handleCall(otherUserProfile?.phone_number || '')}
+                      className="flex-1"
+                      variant="love"
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call
+                    </Button>
+                    <Button 
+                      onClick={() => handleMessage(otherUserProfile?.phone_number || '')}
+                      className="flex-1"
+                      variant="outline"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Message
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
