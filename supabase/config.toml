@@ -1,1 +1,16 @@
 project_id = "fyateryvaloezbyhzeoj"
+
+[functions.ai-chat]
+verify_jwt = true
+
+[functions.send-notification]
+verify_jwt = false
+
+[functions.create-payment]
+verify_jwt = true
+
+[functions.process-matches]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false
