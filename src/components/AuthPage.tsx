@@ -12,20 +12,20 @@ import { Label } from "@/components/ui/label";
 import { Heart, Phone, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { AuthService, crushService } from "@/api/crushService";
 interface AuthPageProps {
   onAuthSuccess: () => void;
 }
 
 const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [workingPhone, setWorkingPhone] = useState("");
+  const handlePhoneSubmit = async (e) => {
     setLoading(true);
 
     try {
@@ -34,11 +34,14 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         ? phone
         : `+1${phone.replace(/\D/g, "")}`;
 
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
+      const response = await AuthService.requestOtp({
+        ownerPhone: formattedPhone,
       });
 
-      if (error) throw error;
+      if (response.status !== 200) {
+        throw new Error("Failed to send OTP");
+      }
+      setWorkingPhone(formattedPhone);
 
       setStep("otp");
       toast({
@@ -65,18 +68,18 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         ? phone
         : `+1${phone.replace(/\D/g, "")}`;
 
+      const payLoad = {
+        name,
+        ownerPhone: workingPhone,
+        otpCode: otp,
+      };
       // Use our custom verify-otp function
-      const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: {
-          phone: formattedPhone,
-          token: otp,
-          type: "signup",
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
+      const response = await AuthService.verify(
+        payLoad.ownerPhone,
+        payLoad.otpCode
+      );
+      console.log("otp", otp);
+      if (response.status === 200) {
         toast({
           title: "Welcome!",
           description: "Authentication successful",
@@ -93,7 +96,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       });
     } finally {
       setLoading(false);
-      onAuthSuccess(); // remove this line if you don't want to auto-redirect after OTP verification
+      // onAuthSuccess(); // remove this line if you don't want to auto-redirect after OTP verification
     }
   };
 
@@ -139,6 +142,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                 variant="love"
                 className="w-full"
                 disabled={loading}
+                onClick={() => handlePhoneSubmit(phone)}
               >
                 {loading ? "Sending..." : "Send Verification Code"}
               </Button>
@@ -168,6 +172,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                 variant="love"
                 className="w-full"
                 disabled={loading}
+                onClick={handleOtpSubmit}
               >
                 {loading ? "Verifying..." : "Verify & Sign In"}
               </Button>
