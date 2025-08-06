@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Heart, Phone, Lock } from "lucide-react";
@@ -12,7 +18,7 @@ interface AuthPageProps {
 }
 
 const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,15 +30,17 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
 
     try {
       // Format phone number
-      const formattedPhone = phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`;
-      
+      const formattedPhone = phone.startsWith("+")
+        ? phone
+        : `+1${phone.replace(/\D/g, "")}`;
+
       const { error } = await supabase.auth.signInWithOtp({
         phone: formattedPhone,
       });
 
       if (error) throw error;
 
-      setStep('otp');
+      setStep("otp");
       toast({
         title: "OTP Sent",
         description: "Check your phone for the verification code",
@@ -53,15 +61,17 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
     setLoading(true);
 
     try {
-      const formattedPhone = phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`;
-      
+      const formattedPhone = phone.startsWith("+")
+        ? phone
+        : `+1${phone.replace(/\D/g, "")}`;
+
       // Use our custom verify-otp function
-      const { data, error } = await supabase.functions.invoke('verify-otp', {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
         body: {
           phone: formattedPhone,
           token: otp,
-          type: 'signup'
-        }
+          type: "signup",
+        },
       });
 
       if (error) throw error;
@@ -83,6 +93,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       });
     } finally {
       setLoading(false);
+      onAuthSuccess(); // remove this line if you don't want to auto-redirect after OTP verification
     }
   };
 
@@ -94,18 +105,17 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
             <Heart className="w-16 h-16 mx-auto text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            {step === 'phone' ? "Join CrushMatch" : "Verify Your Phone"}
+            {step === "phone" ? "Join CrushMatch" : "Verify Your Phone"}
           </CardTitle>
           <CardDescription>
-            {step === 'phone' 
-              ? "Enter your phone number to get started" 
-              : "Enter the verification code sent to your phone"
-            }
+            {step === "phone"
+              ? "Enter your phone number to get started"
+              : "Enter the verification code sent to your phone"}
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent>
-          {step === 'phone' ? (
+          {step === "phone" ? (
             <form onSubmit={handlePhoneSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
@@ -124,10 +134,10 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                variant="love" 
-                className="w-full" 
+              <Button
+                type="submit"
+                variant="love"
+                className="w-full"
                 disabled={loading}
               >
                 {loading ? "Sending..." : "Send Verification Code"}
@@ -153,10 +163,10 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                variant="love" 
-                className="w-full" 
+              <Button
+                type="submit"
+                variant="love"
+                className="w-full"
                 disabled={loading}
               >
                 {loading ? "Verifying..." : "Verify & Sign In"}
@@ -166,7 +176,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => setStep('phone')}
+                onClick={() => setStep("phone")}
               >
                 Back to Phone Number
               </Button>
