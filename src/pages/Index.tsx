@@ -6,38 +6,38 @@ import AuthPage from "@/components/AuthPage";
 import Dashboard from "@/components/Dashboard";
 import MatchesPage from "@/components/MatchesPage";
 
-type AppState = 'landing' | 'auth' | 'dashboard' | 'matches';
+type AppState = "landing" | "signup" | "signin" | "dashboard" | "matches";
 
 const Index = () => {
-  const [currentPage, setCurrentPage] = useState<AppState>('landing');
+  const [currentPage, setCurrentPage] = useState<AppState>("landing");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        if (session?.user) {
-          setCurrentPage('dashboard');
-        } else {
-          setCurrentPage('landing');
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+
+      if (session?.user) {
+        setCurrentPage("dashboard");
+      } else {
+        setCurrentPage("landing");
       }
-    );
+    });
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      
+
       if (session?.user) {
-        setCurrentPage('dashboard');
+        setCurrentPage("dashboard");
       }
     });
 
@@ -45,12 +45,32 @@ const Index = () => {
   }, []);
 
   const handleAuthSuccess = () => {
-    setCurrentPage('dashboard');
+    setCurrentPage("dashboard");
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setCurrentPage('landing');
+    setCurrentPage("landing");
+  };
+
+  const handleSignUpClick = () => {
+    setCurrentPage("signup");
+  };
+
+  const handleSignInClick = () => {
+    setCurrentPage("signin");
+  };
+
+  const handleSwitchToSignIn = () => {
+    setCurrentPage("signin");
+  };
+
+  const handleSwitchToSignUp = () => {
+    setCurrentPage("signup");
+  };
+
+  const handleBackToLanding = () => {
+    setCurrentPage("landing");
   };
 
   const renderCurrentPage = () => {
@@ -63,16 +83,42 @@ const Index = () => {
     }
 
     switch (currentPage) {
-      case 'landing':
-        return <LandingPage />;
-      case 'auth':
-        return <AuthPage onAuthSuccess={handleAuthSuccess} />;
-      case 'dashboard':
+      case "landing":
+        return (
+          <LandingPage
+            onSignUp={handleSignUpClick}
+            onSignIn={handleSignInClick}
+          />
+        );
+      case "signup":
+        return (
+          <AuthPage
+            authMode="signup"
+            onAuthSuccess={handleAuthSuccess}
+            onSwitchMode={handleSwitchToSignIn}
+            onBack={handleBackToLanding}
+          />
+        );
+      case "signin":
+        return (
+          <AuthPage
+            authMode="signin"
+            onAuthSuccess={handleAuthSuccess}
+            onSwitchMode={handleSwitchToSignUp}
+            onBack={handleBackToLanding}
+          />
+        );
+      case "dashboard":
         return <Dashboard />;
-      case 'matches':
-        return <MatchesPage onBack={() => setCurrentPage('dashboard')} />;
+      case "matches":
+        return <MatchesPage onBack={() => setCurrentPage("dashboard")} />;
       default:
-        return <LandingPage />;
+        return (
+          <LandingPage
+            onSignUp={handleSignUpClick}
+            onSignIn={handleSignInClick}
+          />
+        );
     }
   };
 
@@ -88,24 +134,24 @@ const Index = () => {
                 CrushMatch
               </span>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setCurrentPage('dashboard')}
+                onClick={() => setCurrentPage("dashboard")}
                 className={`px-4 py-2 rounded-md transition-smooth ${
-                  currentPage === 'dashboard' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'hover:bg-muted'
+                  currentPage === "dashboard"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
                 }`}
               >
                 Dashboard
               </button>
               <button
-                onClick={() => setCurrentPage('matches')}
+                onClick={() => setCurrentPage("matches")}
                 className={`px-4 py-2 rounded-md transition-smooth ${
-                  currentPage === 'matches' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'hover:bg-muted'
+                  currentPage === "matches"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
                 }`}
               >
                 Matches
@@ -125,13 +171,19 @@ const Index = () => {
       {renderCurrentPage()}
 
       {/* Call to Action Overlay for Landing Page */}
-      {currentPage === 'landing' && (
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+      {currentPage === "landing" && (
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex gap-4">
           <button
-            onClick={() => setCurrentPage('auth')}
+            onClick={handleSignUpClick}
             className="gradient-love text-white px-8 py-4 rounded-full font-semibold text-lg shadow-romantic hover:shadow-glow transition-bounce animate-pulse-glow"
           >
             Start Finding Love 💕
+          </button>
+          <button
+            onClick={handleSignInClick}
+            className="bg-white text-primary border-2 border-primary px-8 py-4 rounded-full font-semibold text-lg shadow-romantic hover:shadow-glow transition-bounce"
+          >
+            Sign In
           </button>
         </div>
       )}

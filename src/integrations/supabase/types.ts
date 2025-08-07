@@ -18,21 +18,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          phone_number: string
+          crushPhoneNumber: string
           priority: number
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          phone_number: string
+          crushPhoneNumber: string
           priority: number
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          phone_number?: string
+          crushPhoneNumber?: string
           priority?: number
           user_id?: string
         }
@@ -69,21 +69,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          phone_number: string | null
+          crushPhoneNumber: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          phone_number?: string | null
+          crushPhoneNumber?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          phone_number?: string | null
+          crushPhoneNumber?: string | null
           updated_at?: string
           user_id?: string
         }

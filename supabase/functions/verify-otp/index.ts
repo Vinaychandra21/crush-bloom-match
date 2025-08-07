@@ -53,7 +53,7 @@ serve(async (req) => {
         .from('profiles')
         .upsert({
           user_id: result.data.user.id,
-          phone_number: phone,
+          crushPhoneNumber: phone,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'

@@ -1,327 +1,233 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Plus, Trash2, ArrowUp, ArrowDown, Clock, CheckCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  Heart,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  Clock,
+  CheckCircle,
+} from "lucide-react";
+import { crushService } from "../api/crushService";
 import { useToast } from "@/hooks/use-toast";
-
+import { getOtpSessionId } from "@/utils/session";
 interface Crush {
-  id: string;
-  phone_number: string;
+  crushPhoneNumber: string;
   priority: number;
-  created_at: string;
 }
 
 const Dashboard = () => {
   const [crushes, setCrushes] = useState<Crush[]>([]);
   const [newCrush, setNewCrush] = useState("");
-  const [timeLeft, setTimeLeft] = useState(24 * 60 * 60); // 24 hours in seconds
-  const [loading, setLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(24 * 60 * 60);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchCrushes();
-    
-    // Timer countdown
     const timer = setInterval(() => {
-      setTimeLeft(prev => Math.max(0, prev - 1));
+      setTimeLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
-  const fetchCrushes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('crushes')
-        .select('*')
-        .order('priority');
-
-      if (error) throw error;
-      setCrushes(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to load crushes",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const addCrush = async () => {
+  const addCrush = () => {
     if (!newCrush.trim()) {
-      toast({
+      return toast({
         title: "Error",
-        description: "Please enter a phone number",
+        description: "Enter a phone number",
         variant: "destructive",
       });
-      return;
     }
-
     if (crushes.length >= 4) {
-      toast({
+      return toast({
         title: "Limit Reached",
-        description: "You can only have 4 crushes maximum",
+        description: "Max 4 crushes allowed",
         variant: "destructive",
       });
-      return;
     }
 
-    setLoading(true);
+    const cleanedPhone = newCrush.replace(/\D/g, "");
+    const formattedPhone = cleanedPhone.startsWith("+")
+      ? cleanedPhone
+      : `+${cleanedPhone}`;
+
+    setCrushes((prev) => [
+      ...prev,
+      { crushPhoneNumber: formattedPhone, priority: prev.length + 1 },
+    ]);
+    setNewCrush("");
+  };
+
+  const removeCrush = (index: number) => {
+    const updated = crushes
+      .filter((_, i) => i !== index)
+      .map((c, idx) => ({ ...c, priority: idx + 1 }));
+    setCrushes(updated);
+  };
+
+  const moveCrush = (index: number, dir: "up" | "down") => {
+    const swapIdx = dir === "up" ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= crushes.length) return;
+    const updated = [...crushes];
+    [updated[index], updated[swapIdx]] = [updated[swapIdx], updated[index]];
+    setCrushes(updated.map((c, idx) => ({ ...c, priority: idx + 1 })));
+  };
+
+  const submitCrushes = async () => {
+    const payload = {
+      otpSessionId: getOtpSessionId(),
+      crushes: crushes,
+    };
+    console.log("Submitting crushes:", payload);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // Format phone number
-      const formattedPhone = newCrush.startsWith('+') ? newCrush : `+1${newCrush.replace(/\D/g, '')}`;
-      
-      const { error } = await supabase
-        .from('crushes')
-        .insert({
-          phone_number: formattedPhone,
-          priority: crushes.length + 1,
-          user_id: user.id
-        });
-
-      if (error) throw error;
-
-      setNewCrush("");
-      fetchCrushes();
-      toast({
-        title: "Crush Added",
-        description: "Your secret crush has been added to the list",
-      });
-    } catch (error: any) {
+      await crushService.saveCrushes(payload);
+      toast({ title: "Success", description: "Your crushes have been saved" });
+    } catch (err: any) {
       toast({
         title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeCrush = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('crushes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // Reorder remaining crushes
-      const remainingCrushes = crushes.filter(c => c.id !== id);
-      for (let i = 0; i < remainingCrushes.length; i++) {
-        await supabase
-          .from('crushes')
-          .update({ priority: i + 1 })
-          .eq('id', remainingCrushes[i].id);
-      }
-
-      fetchCrushes();
-      toast({
-        title: "Crush Removed",
-        description: "Crush removed from your list",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
+        description: err?.message || "Something went wrong",
         variant: "destructive",
       });
     }
   };
 
-  const moveCrush = async (id: string, direction: 'up' | 'down') => {
-    const crushIndex = crushes.findIndex(c => c.id === id);
-    const newIndex = direction === 'up' ? crushIndex - 1 : crushIndex + 1;
-    
-    if (newIndex < 0 || newIndex >= crushes.length) return;
+  // const submitCrushes = async () => {
+  //   try {
+  //     // Replace with your backend API endpoint
+  //     const res = await fetch("/api/preferences", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ crushes }),
+  //     });
+  //     if (!res.ok) throw new Error("Failed to save crushes");
+  //     toast({ title: "Success", description: "Your crushes have been saved" });
+  //   } catch (err: any) {
+  //     toast({
+  //       title: "Error",
+  //       description: err.message,
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
 
-    try {
-      // Swap priorities
-      const crush1 = crushes[crushIndex];
-      const crush2 = crushes[newIndex];
-
-      await supabase
-        .from('crushes')
-        .update({ priority: crush2.priority })
-        .eq('id', crush1.id);
-
-      await supabase
-        .from('crushes')
-        .update({ priority: crush1.priority })
-        .eq('id', crush2.id);
-
-      fetchCrushes();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+  const formatTime = (sec: number) => {
+    const h = Math.floor(sec / 3600)
+      .toString()
+      .padStart(2, "0");
+    const m = Math.floor((sec % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
+    const s = (sec % 60).toString().padStart(2, "0");
+    return `${h}:${m}:${s}`;
   };
 
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const progressPercentage = ((4 - crushes.length) / 4) * 100;
+  const progressPercentage = (crushes.length / 4) * 100;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="animate-heartbeat mb-4">
-          <Heart className="w-20 h-20 mx-auto text-primary" />
-        </div>
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Your Secret Crushes
-        </h1>
+        <Heart className="w-20 h-20 mx-auto text-primary mb-4" />
+        <h1 className="text-4xl font-bold">Your Secret Crushes</h1>
         <p className="text-muted-foreground">
-          Add up to 4 people you're interested in. Privacy guaranteed!
+          Add up to 4 crushes and submit once ready.
         </p>
       </div>
 
-      {/* Countdown Timer */}
-      <Card className="mb-8 shadow-soft">
+      {/* Countdown */}
+      <Card className="mb-8">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2">
-            <Clock className="w-5 h-5" />
-            Love Window Timer
+            <Clock className="w-5 h-5" /> Love Window Timer
           </CardTitle>
-          <CardDescription>
-            Time remaining to find your perfect match
-          </CardDescription>
+          <CardDescription>Time left to submit crushes</CardDescription>
         </CardHeader>
         <CardContent className="text-center">
-          <div className="text-6xl font-bold text-primary mb-4 font-mono">
+          <div className="text-6xl font-bold font-mono mb-4">
             {formatTime(timeLeft)}
           </div>
-          <Progress value={(timeLeft / (24 * 60 * 60)) * 100} className="mb-4" />
-          {timeLeft === 0 && (
-            <div className="p-4 border-2 border-dashed border-primary rounded-lg">
-              <CheckCircle className="w-8 h-8 mx-auto text-primary mb-2" />
-              <p className="text-lg font-semibold">Love Window Closed</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Time to check your matches!
-              </p>
-              <Button variant="love" size="lg">
-                Check My Matches 💕
-              </Button>
-            </div>
-          )}
+          <Progress value={(timeLeft / (24 * 60 * 60)) * 100} />
         </CardContent>
       </Card>
 
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Add New Crush */}
-        <Card className="shadow-soft">
+        {/* Add Crush */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Add a Secret Crush
+            <CardTitle>
+              <Plus className="w-5 h-5 inline" /> Add Crush
             </CardTitle>
-            <CardDescription>
-              Enter a phone number to add to your list
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="crush">Phone Number</Label>
-              <Input
-                id="crush"
-                type="tel"
-                placeholder="+1 (555) 123-4567"
-                value={newCrush}
-                onChange={(e) => setNewCrush(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addCrush()}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Progress</span>
-                <span>{crushes.length}/4 crushes</span>
-              </div>
-              <Progress value={progressPercentage} />
-            </div>
-
-            <Button 
-              onClick={addCrush} 
-              className="w-full" 
-              variant="love"
-              disabled={loading || crushes.length >= 4}
-            >
-              {loading ? "Adding..." : "Add Crush 💕"}
+            <Label htmlFor="crush">Phone Number</Label>
+            <Input
+              id="crush"
+              type="tel"
+              placeholder="+91 9876543210"
+              value={newCrush}
+              onChange={(e) => setNewCrush(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && addCrush()}
+            />
+            <Progress value={progressPercentage} />
+            <Button onClick={addCrush} disabled={crushes.length >= 4}>
+              Add Crush 💕
             </Button>
           </CardContent>
         </Card>
 
-        {/* Crushes List */}
-        <Card className="shadow-soft">
+        {/* Crush List */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Heart className="w-5 h-5" />
-              Your Secret Crushes
-            </CardTitle>
-            <CardDescription>
-              Priority order matters for matching
-            </CardDescription>
+            <CardTitle>Your Crushes</CardTitle>
           </CardHeader>
           <CardContent>
             {crushes.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Heart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No crushes added yet</p>
-                <p className="text-sm">Start by adding someone special!</p>
-              </div>
+              <p className="text-center text-muted-foreground">
+                No crushes yet
+              </p>
             ) : (
               <div className="space-y-3">
-                {crushes.map((crush, index) => (
+                {crushes.map((crush, idx) => (
                   <div
-                    key={crush.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    key={idx}
+                    className="flex items-center justify-between p-2 border rounded"
                   >
                     <div className="flex items-center gap-3">
-                      <Badge variant="secondary" className="w-8 h-8 rounded-full flex items-center justify-center">
-                        {crush.priority}
-                      </Badge>
-                      <span className="font-medium">{crush.phone_number}</span>
+                      <Badge>{crush.priority}</Badge>
+                      <span>{crush.crushPhoneNumber}</span>
                     </div>
-                    
-                    <div className="flex items-center gap-1">
+                    <div className="flex gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => moveCrush(crush.id, 'up')}
-                        disabled={index === 0}
+                        onClick={() => moveCrush(idx, "up")}
+                        disabled={idx === 0}
                       >
                         <ArrowUp className="w-4 h-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => moveCrush(crush.id, 'down')}
-                        disabled={index === crushes.length - 1}
+                        onClick={() => moveCrush(idx, "down")}
+                        disabled={idx === crushes.length - 1}
                       >
                         <ArrowDown className="w-4 h-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => removeCrush(crush.id)}
-                        className="text-destructive hover:text-destructive"
+                        onClick={() => removeCrush(idx)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -333,6 +239,14 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {crushes.length > 0 && (
+        <div className="text-center mt-8">
+          <Button size="lg" onClick={submitCrushes}>
+            Submit All Crushes 🚀
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
