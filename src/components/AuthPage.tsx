@@ -13,7 +13,7 @@ import { Heart, Phone, Lock, User, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AuthService, crushService } from "@/api/crushService";
-
+import { setOtpSessionId } from "@/utils/session";
 interface AuthPageProps {
   authMode: "signup" | "signin";
   onAuthSuccess: () => void;
@@ -60,7 +60,7 @@ const AuthPage = ({
         // You might want to add an isSignup flag here for your backend
         isSignup: authMode === "signup",
       });
-
+      setOtpSessionId(response.data.otpSessionId);
       console.log("response", response.data.otpSessionId);
 
       if (response.status !== 200) {

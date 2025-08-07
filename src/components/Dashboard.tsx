@@ -22,9 +22,9 @@ import {
 } from "lucide-react";
 import { crushService } from "../api/crushService";
 import { useToast } from "@/hooks/use-toast";
-
+import { getOtpSessionId } from "@/utils/session";
 interface Crush {
-  phone_number: string;
+  crushPhoneNumber: string;
   priority: number;
 }
 
@@ -64,7 +64,7 @@ const Dashboard = () => {
 
     setCrushes((prev) => [
       ...prev,
-      { phone_number: formattedPhone, priority: prev.length + 1 },
+      { crushPhoneNumber: formattedPhone, priority: prev.length + 1 },
     ]);
     setNewCrush("");
   };
@@ -84,37 +84,42 @@ const Dashboard = () => {
     setCrushes(updated.map((c, idx) => ({ ...c, priority: idx + 1 })));
   };
 
-  // const submitCrushes = async () => {
-  //   try {
-  //     await crushService.saveCrushes(crushes);
-  //     toast({ title: "Success", description: "Your crushes have been saved" });
-  //   } catch (err: any) {
-  //     toast({
-  //       title: "Error",
-  //       description: err?.message || "Something went wrong",
-  //       variant: "destructive",
-  //     });
-  //   }
-  // };
-
   const submitCrushes = async () => {
+    const payload = {
+      otpSessionId: getOtpSessionId(),
+      crushes: crushes,
+    };
+    console.log("Submitting crushes:", payload);
     try {
-      // Replace with your backend API endpoint
-      const res = await fetch("/api/preferences", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ crushes }),
-      });
-      if (!res.ok) throw new Error("Failed to save crushes");
+      await crushService.saveCrushes(payload);
       toast({ title: "Success", description: "Your crushes have been saved" });
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.message,
+        description: err?.message || "Something went wrong",
         variant: "destructive",
       });
     }
   };
+
+  // const submitCrushes = async () => {
+  //   try {
+  //     // Replace with your backend API endpoint
+  //     const res = await fetch("/api/preferences", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ crushes }),
+  //     });
+  //     if (!res.ok) throw new Error("Failed to save crushes");
+  //     toast({ title: "Success", description: "Your crushes have been saved" });
+  //   } catch (err: any) {
+  //     toast({
+  //       title: "Error",
+  //       description: err.message,
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
 
   const formatTime = (sec: number) => {
     const h = Math.floor(sec / 3600)
@@ -200,7 +205,7 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center gap-3">
                       <Badge>{crush.priority}</Badge>
-                      <span>{crush.phone_number}</span>
+                      <span>{crush.crushPhoneNumber}</span>
                     </div>
                     <div className="flex gap-1">
                       <Button

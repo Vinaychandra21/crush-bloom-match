@@ -18,11 +18,11 @@ BEGIN
     c1.priority as user1_priority,
     c2.priority as user2_priority
   FROM public.crushes c1
-  JOIN public.crushes c2 ON c1.phone_number = (
-    SELECT phone_number FROM public.profiles WHERE user_id = c2.user_id
+  JOIN public.crushes c2 ON c1.crushPhoneNumber = (
+    SELECT crushPhoneNumber FROM public.profiles WHERE user_id = c2.user_id
   )
   JOIN public.profiles p1 ON p1.user_id = c1.user_id
-  WHERE c2.phone_number = p1.phone_number
+  WHERE c2.crushPhoneNumber = p1.crushPhoneNumber
     AND c1.user_id != c2.user_id
     AND NOT EXISTS (
       SELECT 1 FROM public.matches m 

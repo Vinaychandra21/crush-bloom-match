@@ -36,8 +36,8 @@ serve(async (req) => {
         user1_id,
         user2_id,
         created_at,
-        user1:profiles!matches_user1_id_fkey(phone_number),
-        user2:profiles!matches_user2_id_fkey(phone_number)
+        user1:profiles!matches_user1_id_fkey(crushPhoneNumber),
+        user2:profiles!matches_user2_id_fkey(crushPhoneNumber)
       `)
       .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // Last 5 minutes
 
