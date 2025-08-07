@@ -1,9 +1,20 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Heart, Timer, Users, Zap } from "lucide-react";
 import heroImage from "@/assets/hero-image.jpg";
 
-const LandingPage = () => {
+interface LandingPageProps {
+  onSignUp: () => void;
+  onSignIn: () => void;
+}
+
+const LandingPage = ({ onSignUp, onSignIn }: LandingPageProps) => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -13,16 +24,16 @@ const LandingPage = () => {
           <div className="animate-float mb-8">
             <Heart className="w-20 h-20 mx-auto text-primary animate-heartbeat" />
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             CrushMatch
           </h1>
-          
+
           <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Discover if your secret crush likes you back. Add your top 4 crushes during the Love Window 
-            and find out if the feeling is mutual!
+            Discover if your secret crush likes you back. Add your top 4 crushes
+            during the Love Window and find out if the feeling is mutual!
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="love" size="lg" className="text-lg px-8 py-4">
               Start Your Love Journey
@@ -37,8 +48,10 @@ const LandingPage = () => {
       {/* Features Section */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-16">How CrushMatch Works</h2>
-          
+          <h2 className="text-4xl font-bold text-center mb-16">
+            How CrushMatch Works
+          </h2>
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <Card className="shadow-soft hover:shadow-romantic transition-smooth text-center">
               <CardHeader>
@@ -47,7 +60,8 @@ const LandingPage = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  You have 24 hours to add your top 4 secret crushes with their mobile numbers
+                  You have 24 hours to add your top 4 secret crushes with their
+                  mobile numbers
                 </CardDescription>
               </CardContent>
             </Card>
@@ -59,7 +73,8 @@ const LandingPage = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Select up to 4 people you have feelings for and add their contact information
+                  Select up to 4 people you have feelings for and add their
+                  contact information
                 </CardDescription>
               </CardContent>
             </Card>
@@ -71,7 +86,8 @@ const LandingPage = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Our priority-based algorithm finds mutual matches when both people like each other
+                  Our priority-based algorithm finds mutual matches when both
+                  people like each other
                 </CardDescription>
               </CardContent>
             </Card>
@@ -83,7 +99,8 @@ const LandingPage = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Get notified when you have a mutual match and connect with your secret crush!
+                  Get notified when you have a mutual match and connect with
+                  your secret crush!
                 </CardDescription>
               </CardContent>
             </Card>
@@ -96,9 +113,14 @@ const LandingPage = () => {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-6">Ready to Find Your Match?</h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Join thousands of people who have found their perfect match through CrushMatch
+            Join thousands of people who have found their perfect match through
+            CrushMatch
           </p>
-          <Button variant="romantic" size="lg" className="text-lg px-12 py-4 animate-pulse-glow">
+          <Button
+            variant="romantic"
+            size="lg"
+            className="text-lg px-12 py-4 animate-pulse-glow"
+          >
             Get Started Now
           </Button>
         </div>
