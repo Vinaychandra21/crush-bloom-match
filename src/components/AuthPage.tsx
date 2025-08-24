@@ -13,7 +13,8 @@ import { Heart, Phone, Lock, User, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AuthService, crushService } from "@/api/crushService";
-import { setOtpSessionId } from "@/utils/session";
+import { setOtpSessionId, getOtpSessionId } from "@/utils/session";
+import { get } from "http";
 interface AuthPageProps {
   authMode: "signup" | "signin";
   onAuthSuccess: () => void;
@@ -36,7 +37,7 @@ const AuthPage = ({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [workingPhone, setWorkingPhone] = useState("");
-  const [otpSessionId, setOtpSessionId] = useState("");
+  // const [otpSessionId, setOtpSessionId] = useState("");
 
   const handleDetailsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +63,7 @@ const AuthPage = ({
       });
       setOtpSessionId(response.data.otpSessionId);
       console.log("response", response.data.otpSessionId);
-
+      console.log("otpSessionId", getOtpSessionId());
       if (response.status !== 200) {
         throw new Error("Failed to send OTP");
       }
@@ -95,7 +96,7 @@ const AuthPage = ({
         ownerName: authMode === "signup" ? name : undefined,
         ownerPhone: workingPhone,
         otpCode: otp,
-        otpSessionId: otpSessionId,
+        otpSessionId: getOtpSessionId() || "",
         isSignup: authMode === "signup",
       };
 
